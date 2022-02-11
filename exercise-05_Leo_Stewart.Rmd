@@ -31,9 +31,6 @@ table_nums <- captioner(prefix = "Table")
 figure_nums <- captioner(prefix = "Figure")
 ```
 
-<!-- Create a Rmd file in your local file system that generates HTML with at least two interesting summaries (tabular and/or graphical) of one or more time series data sets from the Human Fertility Database. -->
-
-
 
 ```{r, fig.align='left'}
 ## Pull HMD credentials from keychain
@@ -66,10 +63,13 @@ _`r figure_nums(name = "fig_births", caption = "Births, 1871-2019, Austria")`_
 
 ```{r}
 aut_births %>%
+  ## Create a column representing the decade
   mutate(Decade = floor(Year / 10)*10) %>%
   mutate(Decade = str_c(Decade, "-", Decade+9)) %>%
+  ## Sum number of births by decade
   group_by(Decade) %>%
   summarise(Total = formatC(sum(Total), big.mark=",")) %>%
+  ## Print out table
   kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", 
                                       "responsive"), 
