@@ -77,5 +77,7 @@ aut_births %>%
 ```
 _`r table_nums(name = "tab_births", caption = "Births by decade, 1871-2019, Austria")`_
 
+*Note: I was unable to connect to the HFD, even after trying multiple accounts, changing my password, logging in through multiple browsers, etc. I have sent them an email to figure out what is going wrong. In the mean time, I hope it's ok that I used HMD data instead.*
+
 `r figure_nums(name = "fig_births", display = "cite")` shows a very simple plot; however the massive changes in births over time are interesting nonetheless. Besides obvious shocks, like the WWI and WWII, I would guess that some of the change is attributable to changes in political boundaries as a result of WWI. I do not know much about European history beyond this, but I am curious as to the jaggedness in the 1940s and the smaller peaks in the 1980s and 90s. The same trend can be interpreted in tabular format, as shown in `r table_nums(name = "tab_births", display = "cite")`.
 
