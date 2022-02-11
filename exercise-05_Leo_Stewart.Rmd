@@ -1,0 +1,81 @@
+---
+title: "Assignment 5"
+author: 'Leo Stewart (lgs17@uw.edu)'
+date: '`r format(Sys.time()," %B %d, %Y")`'
+email: "lgs17@uw.edu"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 6
+    number_sections: true
+    self_contained: yes
+---
+
+
+```{r setup, message=FALSE}
+library(tidyverse)
+
+## for accessing HMD in Q1
+library(keyring)
+library(HMDHFDplus)
+
+## for table formatting
+library(kableExtra)
+
+## For table and figure captions
+library(captioner)
+table_nums <- captioner(prefix = "Table")
+figure_nums <- captioner(prefix = "Figure")
+```
+
+<!-- Create a Rmd file in your local file system that generates HTML with at least two interesting summaries (tabular and/or graphical) of one or more time series data sets from the Human Fertility Database. -->
+
+
+
+```{r, fig.align='left'}
+## Pull HMD credentials from keychain
+HMD_user <- key_list("human-mortality-database")$username
+HMD_pass <- key_get(service = "human-mortality-database", 
+                    username = HMD_user)
+
+## Declare a function to retrieve data from HMD given a specified data item 
+## to pull, convert the dataframe to a tibble, and add a column specifying the 
+## item.
+get_aut_data <- function(item) {
+  readHMDweb(CNTRY = "AUT", 
+             item = item,
+             username = HMD_user, 
+             password = HMD_pass) %>%
+    as_tibble() %>%
+    add_column(Item = item)
+}
+
+## Get birth data 
+aut_births <- get_aut_data(item = "Births")
+
+## Plot birth data
+ggplot(data = aut_births) +
+  geom_line(mapping = aes(x = Year, y = Total)) +
+  theme_classic() +
+  scale_x_continuous(breaks = ~ seq(floor(.x[1]/10)*10, .x[2], 10))
+```
+_`r figure_nums(name = "fig_births", caption = "Births, 1871-2019, Austria")`_
+
+```{r}
+aut_births %>%
+  mutate(Decade = floor(Year / 10)*10) %>%
+  mutate(Decade = str_c(Decade, "-", Decade+9)) %>%
+  group_by(Decade) %>%
+  summarise(Total = formatC(sum(Total), big.mark=",")) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", 
+                                      "responsive"), 
+                full_width = FALSE)
+```
+_`r table_nums(name = "tab_births", caption = "Births by decade, 1871-2019, Austria")`_
+
+`r figure_nums(name = "fig_births", display = "cite")` shows a very simple plot; however the massive changes in births over time are interesting nonetheless. Besides obvious shocks, like the WWI and WWII, I would guess that some of the change is attributable to changes in political boundaries as a result of WWI. I do not know much about European history beyond this, but I am curious as to the jaggedness in the 1940s and the smaller peaks in the 1980s and 90s. The same trend can be interpreted in tabular format, as shown in `r table_nums(name = "tab_births", display = "cite")`.
+
