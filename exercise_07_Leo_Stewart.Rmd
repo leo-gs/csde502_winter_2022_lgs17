@@ -1,0 +1,29 @@
+---
+title: "Assignment 7"
+author: 'Leo Stewart (lgs17@uw.edu)'
+date: '`r format(Sys.time()," %B %d, %Y")`'
+email: "lgs17@uw.edu"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 6
+    number_sections: true
+    self_contained: yes
+---
+
+
+```{r setup, message=FALSE}
+library(tidyverse)
+
+## for table formatting
+library(kableExtra)
+
+## For table and figure captions
+library(captioner)
+table_nums <- captioner(prefix = "Table")
+figure_nums <- captioner(prefix = "Figure")
+```
+
