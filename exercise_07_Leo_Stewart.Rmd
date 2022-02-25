@@ -16,14 +16,176 @@ output:
 
 
 ```{r setup, message=FALSE}
+rm(list = ls())
 library(tidyverse)
 
-## for table formatting
-library(kableExtra)
+## For downloading and unzipping .dta file
+library(curl)
+library(utils)
 
 ## For table and figure captions
 library(captioner)
 table_nums <- captioner(prefix = "Table")
 figure_nums <- captioner(prefix = "Figure")
+
+## For reading in .dta file
+library(haven)
+
+## Bug in current kableExtra package where collapse_rows doesn't work,
+## so using dev build
+devtools::install_github(repo="haozhu233/kableExtra", ref="a6af5c0", 
+                         force = FALSE, quiet = TRUE)
+## For table formatting
+library(kableExtra)
 ```
 
+# Generating A New Dataframe
+
+## Downloading and unzipping .dta file
+```{r}
+## Path to zip file
+zip_link <- str_c("http://staff.washington.edu/phurvitz/",
+                  "csde502_winter_2021/data/21600-0001-Data.dta.zip")
+
+## Locate a path to a temporary directory
+td <- tempdir()
+## Create a new file path to download the zip file to
+zip_file <- file.path(td, "data.dta.zip")
+## Download the file to the new file path
+curl_download(url = zip_link, destfile = zip_file)
+
+## Create a directory path to extract the files to
+extracted_dir <- file.path(td, "extracted")
+## Initialize the directory if it doesn't exist already
+if (!dir.exists(extracted_dir)) dir.create(extracted_dir)
+## Extract the contents into the directory
+unzip(zipfile = zip_file, exdir = extracted_dir)
+
+## Locate the downloaded and extracted .dta file
+dta_path <- file.path(extracted_dir, "21600-0001-Data.dta")
+```
+
+## Loading .dta file into R
+```{r}
+## Read in the .dta file
+AHwave1 <- read_dta(dta_path)
+
+## Names of variables to pull
+dtavars <- c("BIO_SEX", str_c("H1NB", 1:7))
+
+## Function to remove level numbers in parenthesis from factor labels
+sanitize_labels <- function(lbls) str_remove(lbls, regex("\\(.\\)\\ "))
+
+## Iterate through the variable names and add them to the dataframe
+ahdt <- lapply(dtavars, function(v) {
+  ## Pull out the variable values
+  dtcol <- AHwave1[[v]]
+  ## Pull out the variable metadata
+  meta <- attributes(dtcol)
+  ## Convert vector and metadata object to a factor in a tibble,
+  ## format the labels nicely, and add a description to the column 
+  ## as a label
+  tibble(factor(dtcol, 
+                labels = sanitize_labels(names(meta$labels)), 
+                ordered = TRUE)) %>%
+    set_names(nm = v) %>%
+    { attr(.[[v]], "label") <- meta$label; . }
+}) %>%
+  ## Bind all the individual columns together
+  bind_cols() %>%
+  ## Add an overall description to the table as a label
+  { attr(., "label") <- str_c("Sex category and neighborhood data ",
+                              "from Add Health Wave 1, version 1"); . }
+```
+
+
+# Saving RDS Output
+```{r}
+## Declare a file path in the original temporary directory to save 
+## the .RDS file in
+RDSpath <- file.path(td, "ahdata.RDS")
+## Save the .RDS file at the file path
+saveRDS(ahdt, RDSpath)
+```
+
+
+# Frequency Tables
+## Single variable tables
+```{r}
+## Create a function that groups the Add Health data subset by
+## the given set of variables, calculates a frequency table, and
+## renames the grouping variable(s) column(s) to a generic name
+## so that they can be consistently bound together
+freq_table <- function(varnames) {
+  ## Create frequency table:
+  ft <- ahdt %>%
+    ## Group by given variables and add count and percent columns
+    with_groups(all_of(varnames), 
+                summarise, 
+                Count = n(),
+                Percent = str_c(round(n()*100 / nrow(ahdt), 
+                                      digits = 1), "%")) %>%
+    ## Add a column recording what the grouping variables were
+    add_column(Group = str_c(varnames, collapse = ", ")) %>%
+    ## Convert from summary table to tibble
+    as_tibble()
+  
+  ## Rename specified varnames to Var1, Var2, ...
+  varidx <- which(names(ft) %in% varnames)
+  names(ft)[varidx] <- str_c("Var", varidx)
+  
+  ## Convert response variable column(s) from factors to characters
+  ft %>%
+    mutate(across(starts_with("Var"), as.character))
+}
+
+## Make a combined frequency table:
+dtavars %>%
+  ## Make a frequency table for each individual variable
+  lapply(freq_table) %>%
+  ## Bind them all together
+  bind_rows() %>%
+  ## Select the columns for the output table
+  select(Group, Response = Var1, Count, Percent) %>%
+  ## Style and print table
+  kable("html") %>%
+  kable_styling() %>%
+  collapse_rows(columns = 1)
+```
+`r table_nums(name = "ft1", caption = "Combined frequency table for sex category and neighborhood variables")`
+
+## Two-variable frequency table
+```{r}
+## Make a frequency table for each combination of H1NB1 and H1NB5
+freq_table(c("H1NB1", "H1NB5")) %>%
+  ## Give descriptive names
+  select(`You know most of the people in your neighborhood` = Var1,
+         `Do you usually feel safe in your neighborhood?` = Var2, 
+         Count, 
+         Percent) %>%
+  ## Style and print table
+  kable("html") %>%
+  kable_styling()
+```
+`r table_nums(name = "ft2", caption = "Frequency table for variables H1NB1 and H1NB5")`
+
+  
+4.Creating Graph From Dataframe
+```{r}
+## Create plot
+ggplot(ahdt, mapping = aes(x = H1NB1, 
+                           fill = BIO_SEX)) +
+  ## Add side-by-side bars (instead of stacked bars)
+  geom_bar(position = "dodge") +
+  ## Use classic visual theme
+  theme_classic() +
+  ## Add a chart title
+  ggtitle("You know most of the people in your neighborhood")
+```
+`r figure_nums(name = "fig1", caption = "Responses to H1NB1 separated by sex category")`
+
+# Source code
+```{r, comment='', echo=FALSE}
+fname <- knitr::current_input()
+cat(readLines(fname), sep = "\n")
+```
