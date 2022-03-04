@@ -1,6 +1,6 @@
 ---
 title: "CSDE 502 Winter 2022, Assignment 8"
-author: "lgs17"
+author: "Leo Stewart (netID = lgs17)"
 date: '`r format(Sys.time()," %B %d, %Y")`'
 email: "lgs17@uw.edu"
 output: 
@@ -22,6 +22,9 @@ urlcolor: blue
 
 ```{r}
 library(captioner)
+library(tibble)
+library(dplyr)
+library(stringr)
 
 figure_nums <- captioner(prefix = "Figure")
 table_nums <- captioner(prefix = "Table")
@@ -59,21 +62,21 @@ Imagine a new variable: `multirace`, using the following value definitions:
 
 | white| black| AI| asian| raceother|multirace |
 |-----:|-----:|--:|-----:|---------:|---------:|
-|     1|     0|  0|     0|         0|          |
-|     0|     1|  0|     0|         0|          |
-|     1|     0|  0|     1|         0|          |
-|     0|     1|  1|     0|         0|          |
-|     1|     1|  0|     1|         0|          |
-|     0|     1|  0|     0|         1|          |
-|     0|     1|  1|     0|         1|          |
-|     1|     0|  1|     0|         0|          |
-|     1|     1|  1|     0|         1|          |
-|     6|     1|  8|     1|         6|          |	
+|     1|     0|  0|     0|         0|        1 |
+|     0|     1|  0|     0|         0|        2 |
+|     1|     0|  0|     1|         0|        3 |
+|     0|     1|  1|     0|         0|        4 |
+|     1|     1|  0|     1|         0|        5 |
+|     0|     1|  0|     0|         1|        4 |
+|     0|     1|  1|     0|         1|        6 |
+|     1|     0|  1|     0|         0|        3 |
+|     1|     1|  1|     0|         1|        5 |
+|     6|     1|  8|     1|         6|       NA |	
 
 ## 
 **Using this data frame (code below), report how many cases checked more than one race.** Use R code to make this calculation and use inline expressions.
 
-```
+```{r}
 dat <- 
 structure(
     list(
@@ -88,14 +91,121 @@ structure(
     row.names = c(NA, -10L)
 )
 ```
+
+`r sum(rowSums(sign(dat), na.rm = TRUE) > 1)` respondents checked more than one race, although this includes the last case, which looks somewhat suspect. Excluding this case leaves `r sum(rowSums(sign(dat), na.rm = TRUE) > 1)-1` respondents.
+
 ##
 **Write R code to create the multirace variable, using the data set [AHwave1_v3.rds](http://staff.washington.edu/phurvitz/csde502_winter_2021/data/AHwave1_v3.rds).** _Hint: You may want to create another variable, numrace, that counts the number of races._ Use [`download_file()`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/download.file.html) and `tempdir()` to download the file to a temporary directory to avoid local file system dependencies.
+
+```{r}
+## URL to RDS file
+rds_link <- str_c("http://staff.washington.edu/phurvitz/",
+                  "csde502_winter_2021/data/AHwave1_v3.rds")
+## Locate a path to a temporary directory
+td <- tempdir()
+## Create a new file path to download the RDS file to
+rds_file <- file.path(td, "AHwave1_v3.rds")
+## Download the file to the new file path
+curl::curl_download(url = rds_link, destfile = rds_file)
+## Read RDS into environment
+ahw1_dta <- readRDS(rds_file)
+
+## Variables to pull from DTA
+dtavars <- c("white", "black", "AI", "asian", "raceother")
+
+## Function to iterate through the variable names and add them to the dataframe
+dta_to_df <- function(dtavars, sanitize_labels) {
+  
+  dt <- lapply(dtavars, function(v) {
+    ## Pull out the variable values
+    dtcol <- ahw1_dta[[v]]
+    ## Pull out the variable metadata
+    meta <- attributes(dtcol)
+    ## Convert vector and metadata object to a factor in a tibble,
+    ## format the labels nicely, and add a description to the column 
+    ## as a label
+    tibble(factor(dtcol, 
+                  labels = sanitize_labels(names(meta$labels)), 
+                  ordered = TRUE)) %>%
+      purrr::set_names(nm = v) %>%
+      { attr(.[[v]], "label") <- meta$label; . }
+  }) %>%
+    ## Bind all the individual columns together
+    bind_cols()
+}
+
+## Use the function to pull specified variables from AHwave1 DTA
+ahw1a <- dta_to_df(dtavars, function(lbls) {
+  lbls %>% 
+    str_remove(regex("\\(.*\\)\\ ")) %>% 
+    str_remove(" \\(.*")
+})
+
+## Calculate multirace column
+ahw1a <- ahw1a %>%
+  ## Decide how much each response category will count to the total sum
+  ## Currently, Refused and Don't know are not counted towards the sum (i.e.
+  ## counted as zeros)
+  mutate(across(everything(), ~ case_when(.x == "Not marked" ~ 0,
+                                          .x == "Marked" ~ 1,
+                                          .x == "Refused" ~ 0,
+                                          .x == "Don't know" ~ 0))) %>%
+  ## Add a row to connect each observation to its respondent
+  add_column(obsid = 1:nrow(ahw1a)) %>%
+  ## Reshape long to make summing easier
+  tidyr::pivot_longer(cols = -obsid) %>%
+  ## Group by respondent and sum to count how many races were marked
+  ## by each respondent
+  group_by(obsid) %>%
+  add_count(obsid, wt = value, name = "numrace") %>%
+  ungroup() %>%
+  ## Return data to wide format
+  tidyr::pivot_wider(id_cols = c(obsid, numrace), 
+                     names_from = "name", 
+                     values_from = "value") %>%
+  ## Create multirace variable based on the column we just created
+  ## and the responses to individual categories
+  mutate(multirace = case_when(numrace == 1 & white == 1 ~ 1,
+                               numrace == 1 & white == 0 ~ 2,
+                               numrace == 2 & white == 1 ~ 3,
+                               numrace == 2 & white == 0 ~ 4,
+                               numrace >= 3 & white == 1 ~ 5,
+                               numrace >= 3 & white == 0 ~ 6,
+                               numrace == 0 ~ 9)) %>%
+  ## Remove the intermediate columns
+  select(-obsid, -numrace)
+```
 
 ## 
 **Label the `multirace` variable as well as its values using attribute labels.**.
 
+```{r}
+## Convert numbers to a factor with labels
+ahw1a$multirace <- factor(ahw1a$multirace,
+                         levels = c(1:6, 9),
+                         labels = c("one race, white", 
+                                    "one race, not white", 
+                                    "two races, including white", 
+                                    "two races, none white", 
+                                    "three or more races, including white", 
+                                    "three or more races, none white", 
+                                    "race missing"))
+
+## Add column-level label
+attr(ahw1a$multirace, "label") <- str_c("Synthetic column representing ",
+                                       "multiracial background of respondents")
+```
+
 ## 
 **Include below a contingency table of the multirace variable. Make sure that the values are labelled so the table is readable, and also include any missing values.**
+
+```{r}
+## Print out contingency table (honestly not sure what a contingency table is
+## in this context, but hope this works)
+table(ahw1a$multirace) %>%
+  kableExtra::kable(col.names = c("multirace", "Count"), format = "html") %>%
+  kableExtra::kable_styling()
+```
 
 # 
 **Review part B of each of the answers (i.e., `H1KQ1B .. H1KQ10B`) to the Knowledge Quiz (Section 19 of the Add Health questionnaire, documented in `INH19PUB.PDF`). The 10 questions each ask: "How confident are you that your answer is correct?"**
@@ -103,8 +213,75 @@ structure(
 ## 
 **Write R code that creates a single summary variable named `kqconfidence`, with a larger number representing the respondent being more confident across all questions (scale of 0 to 3 for each individual question; `kqconfidence` will be the sum for each subject across the 10 questions). Note that any observations with value 7 (i.e., age less than 15) should be removed from the data frame, and values 6, 8, and 9 should be coded as `NA` (i.e., missing) for the purposes of scoring confidence. Document your code so that the reader knows how you scored the scale and how you handled missing values. Make sure to label the new variable.**
 
+```{r}
+## Variables to pull from DTA
+dtavars <- str_c("h1kq", 1:10, "b")
+
+## Create table with knowledge quiz variables
+ahw1b <- dta_to_df(dtavars, function(lbls) {
+  lbls %>% 
+    str_remove(regex("\\(.*\\)\\ ")) %>% 
+    str_remove(" \\(.*")
+}) %>%
+  ## Add column to keep track of which response belongs to which response
+  ## before reshaping data
+  add_column(obsid = 1:nrow(.)) %>%
+  ## Reshape longer
+  tidyr::pivot_longer(cols = -obsid) %>%
+  ## Remove all value 7 responses
+  filter(value != "Legitimate skip") %>%
+  ## Convert values to a number as follows:
+  ## 1 (Very)             --> 3
+  ## 2 (Moderately)       --> 2
+  ## 3 (Slightly)         --> 1
+  ## 4 (Not at all)       --> 0
+  ## 5 (Refused)          --> -1
+  ## 7 (Don't know)       --> -3
+  ## 8 (Not applicable)   --> -4
+  ## This is done somewhat hackily by subtracting 4 from all values
+  mutate(value = 4 - as.numeric(value)) %>%
+  ## After converting, keep non-negative values (Not at all .. Very) and replace
+  ## negative values (Refused .. Not applicable) with NA values
+  mutate(value = case_when(value >= 0 ~ value,
+                           value <= 0 ~ NA_real_)) %>%
+  ## Create kqconfidence by summing together individual scores. NA values are
+  ## very crudely replaced with zeros in the sum
+  group_by(obsid) %>%
+  add_count(obsid, wt = tidyr::replace_na(value, 0), name = "kqconfidence") %>%
+  ungroup() %>%
+  ## Restore to wide format
+  tidyr::pivot_wider(id_cols = c(obsid, kqconfidence), 
+                     names_from = "name", 
+                     values_from = "value") %>%
+  ## Remove obsid column since we don't need it any more
+  select(-obsid)
+
+attr(ahw1b$kqconfidence, "label") <- str_c("Sum of knowledge quiz confidence",
+                                           "variables, where a higher score ",
+                                           "represents a higher score.")
+```
+
 ## 
 **Create and include below a contingency table from `kqconfidence` with raw counts, percentages, and cumulative percentages.**
+```{r}
+## Creating contingency table
+ahw1b %>%
+  ## Group by each possible kqconfidence score
+  group_by(kqconfidence) %>%
+  ## For each score, count how many people got that score
+  summarise(Count = n()) %>%
+  ## Convert from a summary to a new table
+  as_tibble() %>%
+  ## Convert counts to percentage of total respondents
+  mutate(Percentage = Count*100 / sum(.$Count)) %>%
+  ## Create cumulative sum of percentage column
+  mutate(`Cumulative Percentage` = cumsum(Percentage)) %>%
+  ## Round everything to 2 significant digits
+  mutate(across(everything(), ~ signif(.x, digits = 2))) %>%
+  ## Format the table and print it out
+  kableExtra::kable("html") %>%
+  kableExtra::kable_styling()
+```
 
 ## 
 **[BONUS] For each subject there were zero to 10 _missing_ answers to each of the 10 component questions. We would like to know what this distribution is. Include below a table that shows the count of subjects for each unique value of the count of missing questions.**
