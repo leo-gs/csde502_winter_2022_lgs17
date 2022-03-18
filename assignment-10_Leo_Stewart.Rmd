@@ -68,7 +68,9 @@ Births are an essential component of defining and predicting population dynamics
 # Methods
 Given the large-scale quantitative nature of demographic analysis, identifying trends in sex ratio at birth should be done with statistical analysis. This paper will lay a foundation for such analysis by visualizing trends in SRB for countries in the Human Mortality Database (HMD) data set.
 
-## Data: obtaining birth estimates from the HMD
+## Data
+Data were obtained from the Human Mortality Database (HMD) using the HMDHFDplus R package.
+
 ```{r}
 ## Pull HMD credentials from keychain
 HMD_user <- key_list("human-mortality-database")$username
@@ -167,7 +169,6 @@ ggplot(data = subset(births, Country %in% c("USA", "RUS", "JPN"))) +
   scale_x_continuous(name = "Births") +
   scale_y_continuous(name = "Sex Ratio at Birth")
 ```
-
 
 _`r figure_nums(name = "fig3", caption = "Sex ratio at birth by birth count for USA, Russia, and Japan")`_
 
