@@ -35,7 +35,7 @@ urlcolor: blue
 }
 </style>
 
-```{r setup}
+```{r setup, warning=FALSE, message=FALSE}
 library(tidyverse)
 
 ## For accessing HMD data
@@ -61,15 +61,6 @@ if (!interactive()) {
 ## Set plot theme for ggplot figures
 theme_set(theme_classic())
 ```
-
-
-<!-- # Content {-} -->
-<!-- The paper can take one of two forms: -->
-
-<!-- 1. Exploratory data analysis -->
-<!-- : Investigate some variables in depth as though you were preparing for hypothesis generation to support formal statistical analysis of the data. For example, you might want to look at sociodemographic predictors of the number of correct answers to the Add Health Knowledge Quiz. In that case you would present descriptive statistics (e.g., mean, median, standard deviation, histogram) on the dependent and independent variables. Based on the characteristics of the data, the paper will culminate with a research question and hypothesis/hypotheses. -->
-<!-- 1. Research -->
-<!-- : The paper should have a clearly stated research question based on variables present in the data as well as a hypothesis about the relationship between the dependent and independent variables. The paper should have the standard sections: Introduction, Methods, Results, Discussion, Conclusion. -->
 
 # Introduction
 Births are an essential component of defining and predicting population dynamics. Sex ratio at birth reflects a population's ability to sustain itself and thus understanding sex ratio at birth (SRB) is crucial for understanding the compositional trends of a population. A "common sense" estimate of SRB would usually assume a 50/50 split between males and females (uniformly distributed, completely due to change). This paper will investigate this hypothesis.
@@ -160,6 +151,7 @@ ggplot(data = births) +
             alpha = 0.75) +
   geom_hline(yintercept = 1, lty = 3)
 ```
+
 _`r figure_nums(name = "fig2", caption = "Sex ratio at birth over time")`_
 
 
