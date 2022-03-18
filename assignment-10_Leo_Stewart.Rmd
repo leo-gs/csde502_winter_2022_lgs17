@@ -63,7 +63,7 @@ theme_set(theme_classic())
 ```
 
 # Introduction
-Births are an essential component of defining and predicting population dynamics. Sex ratio at birth reflects a population's ability to sustain itself and thus understanding sex ratio at birth (SRB) is crucial for understanding the compositional trends of a population. A "common sense" estimate of SRB would usually assume a 50/50 split between males and females (uniformly distributed, completely due to change). This paper will investigate this hypothesis.
+Births are an essential component of defining and predicting population dynamics. Sex ratio at birth reflects a population's ability to sustain itself and thus understanding sex ratio at birth (SRB) is crucial for understanding the compositional trends of a population. A "common sense" estimate of SRB would usually assume a 50/50 split between males and females (uniformly distributed, completely due to chance). This paper will investigate this hypothesis.
 
 # Methods
 Given the large-scale quantitative nature of demographic analysis, identifying trends in sex ratio at birth should be done with statistical analysis. This paper will lay a foundation for such analysis by visualizing trends in SRB for countries in the Human Mortality Database (HMD) data set.
