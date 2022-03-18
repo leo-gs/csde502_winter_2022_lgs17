@@ -36,8 +36,17 @@ urlcolor: blue
 </style>
 
 ```{r setup}
-library(captioner)
+library(tidyverse)
 
+## For accessing HMD data
+library(keyring)
+library(HMDHFDplus)
+
+## For table formatting
+library(kableExtra)
+
+## For table/figure captions
+library(captioner)
 figure_nums <- captioner(prefix = "Figure")
 table_nums <- captioner(prefix = "Table")
 
@@ -48,31 +57,138 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 if (!interactive()) {
     fnamepath <- as.character(sys.call(1))[2]
 }
+
+## Set plot theme for ggplot figures
+theme_set(theme_classic())
 ```
 
-# Explanation {-}
-This assignment is focused on creating a ***brief*** research paper. Use the public-use Add Health data, the Human Mortality Database, the Human Fertility Database, or the Babushkin Employee Turnover data.
+
+<!-- # Content {-} -->
+<!-- The paper can take one of two forms: -->
+
+<!-- 1. Exploratory data analysis -->
+<!-- : Investigate some variables in depth as though you were preparing for hypothesis generation to support formal statistical analysis of the data. For example, you might want to look at sociodemographic predictors of the number of correct answers to the Add Health Knowledge Quiz. In that case you would present descriptive statistics (e.g., mean, median, standard deviation, histogram) on the dependent and independent variables. Based on the characteristics of the data, the paper will culminate with a research question and hypothesis/hypotheses. -->
+<!-- 1. Research -->
+<!-- : The paper should have a clearly stated research question based on variables present in the data as well as a hypothesis about the relationship between the dependent and independent variables. The paper should have the standard sections: Introduction, Methods, Results, Discussion, Conclusion. -->
+
+# Introduction
+Births are an essential component of defining and predicting population dynamics. Sex ratio at birth reflects a population's ability to sustain itself and thus understanding sex ratio at birth (SRB) is crucial for understanding the compositional trends of a population. A "common sense" estimate of SRB would usually assume a 50/50 split between males and females (uniformly distributed, completely due to change). This paper will investigate this hypothesis.
+
+# Methods
+Given the large-scale quantitative nature of demographic analysis, identifying trends in sex ratio at birth should be done with statistical analysis. This paper will lay a foundation for such analysis by visualizing trends in SRB for countries in the Human Mortality Database (HMD) data set.
+
+## Data: obtaining birth estimates from the HMD
+```{r}
+## Pull HMD credentials from keychain
+HMD_user <- key_list("human-mortality-database")$username
+HMD_pass <- key_get(service = "human-mortality-database", 
+                    username = HMD_user)
+
+## Declare a function to retrieve data from HMD given a specified data item 
+## to pull, convert the dataframe to a tibble, and add a column specifying the 
+## item.
+get_hmd_data <- function(country, item) {
+  readHMDweb(CNTRY = country, 
+             item = item,
+             username = HMD_user, 
+             password = HMD_pass) %>%
+    as_tibble() %>%
+    add_column(Item = item) %>%
+    add_column(Country = country)
+}
+
+## Get a list of countries included in the HMD
+HMD_countries <- getHMDcountries()
+
+## Get birth data (makes ~50 requests to HMD - takes a bit)
+births <- lapply(HMD_countries,
+                 function(country) {
+                   get_hmd_data(country, "Births")
+                 }) %>%
+  bind_rows()
+
+## Calculate SRB
+births <- births %>%
+  mutate(SRB = Male / Female)
+```
+
+# Results
+This section will present the results of visual analysis.
+
+```{r}
+## Plot birth data
+ggplot(data = births) +
+  geom_line(mapping = aes(x = Year, 
+                          y = Total,
+                          color = Country)) +
+  scale_x_continuous(breaks = ~ seq(floor(.x[1]/25)*25, .x[2], 25)) +
+  scale_y_log10(name = "Births, log-10 scale") +
+  guides(color = "none") +
+  geom_text(data = births %>%
+              group_by(Country) %>%
+              slice_max(order_by = Year),
+            mapping = aes(x = Year, 
+                          y = Total,
+                          label = Country),
+            size = 2,
+            nudge_x = 6,
+            alpha = 0.75)
+```
+
+_`r figure_nums(name = "fig1", caption = "Total births over time (log-10 scale")`_
 
 
-# Instructions {-}
-1. Make sure your Rmd file has no local file system dependencies (i.e., anyone should be able to recreate the output HTML using only the Rmd source file).
-1. For any tables or figures, include captions and cross-references and any other document automation methods as necessary.
-1. Make sure your output HTML file looks appealing to the reader.
-1. Upload the final Rmd to your github repository.
-1. Download [`assn_id.txt`](https://staff.washington.edu/phurvitz/csde502_winter_2022/assn_id.txt) and include the URL to your Rmd file on github.com.
-1. Upload the completed text file to Canvas.
+`r figure_nums(name = "fig2", display = "cite")` shows a plot of total births over time. As one would expect, some countries have a lot of births and other countries do not. It would be interesting to look at whether there is a relationship between birth count and SRB.
+
+```{r}
+## Plot SRB data
+ggplot(data = births) +
+  geom_line(mapping = aes(x = Year, 
+                          y = SRB,
+                          color = Country)) +
+  scale_x_continuous(breaks = ~ seq(floor(.x[1]/25)*25, .x[2], 25)) +
+  scale_y_continuous(name = "Sex Ratio at Birth") +
+  guides(color = "none") +
+  geom_text(data = births %>%
+              group_by(Country) %>%
+              slice_max(order_by = Year),
+            mapping = aes(x = Year, 
+                          y = SRB,
+                          label = Country),
+            size = 2,
+            nudge_x = 6,
+            alpha = 0.75) +
+  geom_hline(yintercept = 1, lty = 3)
+```
+_`r figure_nums(name = "fig2", caption = "Sex ratio at birth over time")`_
 
 
-# Content {-}
-The paper can take one of two forms:
+`r figure_nums(name = "fig2", display = "cite")` shows a plot of SRB for each country over time. It is interesting to see that the average SRB looks closer to 1.05 rather than 1.00. This can be confirmed by calculating the mean of the SRB distribution, where the observed mean is `r round(mean(births$SRB, na.rm = T), digits = 3)`. Some countries vary a lot while others do not.
 
-1. Exploratory data analysis
-: Investigate some variables in depth as though you were preparing for hypothesis generation to support formal statistical analysis of the data. For example, you might want to look at sociodemographic predictors of the number of correct answers to the Add Health Knowledge Quiz. In that case you would present descriptive statistics (e.g., mean, median, standard deviation, histogram) on the dependent and independent variables. Based on the characteristics of the data, the paper will culminate with a research question and hypothesis/hypotheses.
-1. Research
-: The paper should have a clearly stated research question based on variables present in the data as well as a hypothesis about the relationship between the dependent and independent variables. The paper should have the standard sections: Introduction, Methods, Results, Discussion, Conclusion.
+```{r}
+## Plot SRB data for top-3 countries
+ggplot(data = subset(births, Country %in% c("USA", "RUS", "JPN"))) +
+  geom_point(mapping = aes(x = Total, 
+                          y = SRB,
+                          color = Country),
+             size = 1) +
+  scale_x_continuous(name = "Births") +
+  scale_y_continuous(name = "Sex Ratio at Birth")
+```
+
+
+_`r figure_nums(name = "fig3", caption = "Sex ratio at birth by birth count for USA, Russia, and Japan")`_
+
+
+Finally, `r figure_nums(name = "fig3", display = "cite")` shows SRB over time for the three countries with the most births in the most recent year stored in the HMD: USA, Russia, and Japan. Each point represents the SRB for a given year. It looks like SRB varies less for the US and Russia than for Japan.
+
+# Discussion
+Visual analysis suggests some relationship between number of births and variance in SRB values. This makes sense, given that countries with a high number of births would likely adhere more closely to an underlying distribution.
+
+# Conclusion
+This paper performed exploratory visual analysis on birth data from the Human Mortality Database. Future inquiry could use statistical analysis to further examine the trends surfaced with respect to sex ratio at birth.
 
 <hr>
-
 
 # {-}
 
