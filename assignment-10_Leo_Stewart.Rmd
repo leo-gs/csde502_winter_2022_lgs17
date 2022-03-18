@@ -1,0 +1,82 @@
+---
+title: "CSDE 502 Winter 2022, Assignment 10"
+author: "[Leo Stewart](mailto:lgs17@uw.edu)"
+output: 
+    bookdown::html_document2:
+        number_sections: true
+        self_contained: true
+        code_folding: hide
+        toc: true
+        toc_float:
+            collapsed: true
+            smooth_scroll: false
+    pdf_document:
+        number_sections: true
+        toc: true
+        fig_cap: yes
+        keep_tex: yes
+urlcolor: blue 
+---
+
+<!--these following settings control width and also make a DIV tag for black outlines for figures-->
+<style type="text/css">
+.main-container {
+  max-width: 2400px !important;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+<style>
+.outline {
+   background-color: #000000;
+   padding:1px;
+   display: inline-block;
+}
+</style>
+
+```{r setup}
+library(captioner)
+
+figure_nums <- captioner(prefix = "Figure")
+table_nums <- captioner(prefix = "Table")
+
+# chunk options
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+# path to this file name
+if (!interactive()) {
+    fnamepath <- as.character(sys.call(1))[2]
+}
+```
+
+# Explanation {-}
+This assignment is focused on creating a ***brief*** research paper. Use the public-use Add Health data, the Human Mortality Database, the Human Fertility Database, or the Babushkin Employee Turnover data.
+
+
+# Instructions {-}
+1. Make sure your Rmd file has no local file system dependencies (i.e., anyone should be able to recreate the output HTML using only the Rmd source file).
+1. For any tables or figures, include captions and cross-references and any other document automation methods as necessary.
+1. Make sure your output HTML file looks appealing to the reader.
+1. Upload the final Rmd to your github repository.
+1. Download [`assn_id.txt`](https://staff.washington.edu/phurvitz/csde502_winter_2022/assn_id.txt) and include the URL to your Rmd file on github.com.
+1. Upload the completed text file to Canvas.
+
+
+# Content {-}
+The paper can take one of two forms:
+
+1. Exploratory data analysis
+: Investigate some variables in depth as though you were preparing for hypothesis generation to support formal statistical analysis of the data. For example, you might want to look at sociodemographic predictors of the number of correct answers to the Add Health Knowledge Quiz. In that case you would present descriptive statistics (e.g., mean, median, standard deviation, histogram) on the dependent and independent variables. Based on the characteristics of the data, the paper will culminate with a research question and hypothesis/hypotheses.
+1. Research
+: The paper should have a clearly stated research question based on variables present in the data as well as a hypothesis about the relationship between the dependent and independent variables. The paper should have the standard sections: Introduction, Methods, Results, Discussion, Conclusion.
+
+<hr>
+
+
+# {-}
+
+```{r comment=''}
+cat(readLines(fnamepath), sep = '\n')
+```
+```
