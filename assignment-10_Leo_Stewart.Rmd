@@ -71,7 +71,7 @@ Given the large-scale quantitative nature of demographic analysis, identifying t
 ## Data
 Data were obtained from the Human Mortality Database (HMD) using the HMDHFDplus R package.
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 ## Pull HMD credentials from keychain
 HMD_user <- key_list("human-mortality-database")$username
 HMD_pass <- key_get(service = "human-mortality-database", 
@@ -108,7 +108,7 @@ births <- births %>%
 # Results
 This section will present the results of visual analysis.
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 ## Plot birth data
 ggplot(data = births) +
   geom_line(mapping = aes(x = Year, 
@@ -128,12 +128,12 @@ ggplot(data = births) +
             alpha = 0.75)
 ```
 
-_`r figure_nums(name = "fig1", caption = "Total births over time (log-10 scale")`_
+_`r figure_nums(name = "fig1", caption = "Total births over time (log-10 scale)")`_
 
 
 `r figure_nums(name = "fig2", display = "cite")` shows a plot of total births over time. As one would expect, some countries have a lot of births and other countries do not. It would be interesting to look at whether there is a relationship between birth count and SRB.
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 ## Plot SRB data
 ggplot(data = births) +
   geom_line(mapping = aes(x = Year, 
@@ -187,5 +187,4 @@ This paper performed exploratory visual analysis on birth data from the Human Mo
 
 ```{r comment=''}
 cat(readLines(fnamepath), sep = '\n')
-```
 ```
